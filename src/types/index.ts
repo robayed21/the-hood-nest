@@ -13,6 +13,7 @@ export interface Product {
   priceBDT: number;
   originalPriceBDT?: number;
   image: string;
+  hoverImage?: string; // Fear of God style alternate angle / back view
   badge?: 'Best Seller' | 'New Drop' | 'Signature' | 'Limited';
   inStock: boolean;
   fabricGSM?: string;

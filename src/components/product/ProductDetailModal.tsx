@@ -20,8 +20,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [quantity, setQuantity] = useState<number>(1);
   const [showSizeGuide, setShowSizeGuide] = useState<boolean>(false);
   const [addedSuccess, setAddedSuccess] = useState<boolean>(false);
+  const [viewAngle, setViewAngle] = useState<'front' | 'back'>('front');
 
   if (!isOpen || !product) return null;
+
+  const currentImage = (viewAngle === 'back' && product.hoverImage) ? product.hoverImage : product.image;
 
   const handleAdd = () => {
     onAddToCart(product, selectedSize, quantity);
@@ -56,13 +59,38 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Left: Product Image */}
+        {/* Left: Product Image with Front/Back Toggle */}
         <div className="md:w-1/2 relative bg-background-muted aspect-square md:aspect-auto">
           <img
-            src={product.image}
+            src={currentImage}
             alt={product.name}
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover object-center transition-all duration-500"
           />
+
+          {/* Front / Back Toggle Buttons */}
+          {product.hoverImage && (
+            <div className="absolute top-4 right-14 z-20 flex items-center bg-black/70 backdrop-blur-md rounded-full p-0.5 border border-white/20">
+              <button
+                type="button"
+                onClick={() => setViewAngle('front')}
+                className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-full transition-colors ${
+                  viewAngle === 'front' ? 'bg-white text-primary shadow' : 'text-white/70 hover:text-white'
+                }`}
+              >
+                Front
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewAngle('back')}
+                className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-full transition-colors ${
+                  viewAngle === 'back' ? 'bg-white text-primary shadow' : 'text-white/70 hover:text-white'
+                }`}
+              >
+                Back
+              </button>
+            </div>
+          )}
+
           {product.badge && (
             <span className="absolute top-4 left-4 text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-sm bg-primary text-white shadow-sm">
               {product.badge}

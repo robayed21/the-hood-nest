@@ -1,11 +1,11 @@
-import React from 'react';
-import { ShoppingBag, Star } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ShoppingBag, Star, RefreshCw } from 'lucide-react';
 import { Product } from '../../types';
 import { Button } from '../common/Button';
 
 interface ProductCardProps {
   product: Product;
-  onAddToCart?: (product: Product) => void;
+  onAddToCart?: (product: Product, size?: string) => void;
   className?: string;
 }
 
@@ -14,20 +14,94 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onAddToCart,
   className = '',
 }) => {
+  const [isTouchFlipped, setIsTouchFlipped] = useState(false);
+  const [rotate, setRotate] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
   const discountPercent = product.originalPriceBDT
     ? Math.round(((product.originalPriceBDT - product.priceBDT) / product.originalPriceBDT) * 100)
     : null;
 
+  // Fear of God 3D Micro-movement on mouse move ("Nara chara kore")
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    // Subtle 3D tilt
+    const rotateX = ((y - centerY) / centerY) * -5.5;
+    const rotateY = ((x - centerX) / centerX) * 5.5;
+
+    setRotate({ x: rotateX, y: rotateY });
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setRotate({ x: 0, y: 0 });
+  };
+
+  // Touch toggle for mobile phones
+  const handleTouchToggle = (e: React.MouseEvent | React.TouchEvent) => {
+    // If clicking add to bag button, let button handle it
+    if ((e.target as HTMLElement).closest('button')) return;
+    setIsTouchFlipped(!isTouchFlipped);
+  };
+
+  const hasHoverImage = Boolean(product.hoverImage && product.hoverImage !== product.image);
+  const showBackImage = (isHovered || isTouchFlipped) && hasHoverImage;
+
   return (
-    <div className={`group bg-white rounded-sm border border-background-muted overflow-hidden flex flex-col transition-all duration-300 hover:shadow-lg hover:border-accent/40 ${className}`}>
-      {/* Product Image Container */}
-      <div className="relative aspect-[4/5] bg-background-muted overflow-hidden">
+    <div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleTouchToggle}
+      style={{
+        transform: `perspective(900px) rotateX(${rotate.x}deg) rotateY(${rotate.y}deg) scale3d(${isHovered ? 1.015 : 1}, ${isHovered ? 1.015 : 1}, 1)`,
+        transition: isHovered ? 'transform 0.12s ease-out' : 'transform 0.5s ease-out, box-shadow 0.3s ease',
+      }}
+      className={`group bg-white rounded-sm border border-background-muted overflow-hidden flex flex-col cursor-pointer transition-shadow duration-300 hover:shadow-xl hover:border-accent/50 ${className}`}
+    >
+      {/* Product Image Container with Fear of God Front/Back Cross-fade */}
+      <div className="relative aspect-[4/5] bg-[#F4F3F0] overflow-hidden select-none">
+        {/* Front Image */}
         <img
           src={product.image}
-          alt={product.name}
-          className="w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
+          alt={`${product.name} Front View`}
+          className={`w-full h-full object-cover object-center transition-all duration-700 ease-out ${
+            showBackImage ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+          }`}
           loading="lazy"
         />
+
+        {/* Alternate Angle / Back View (Fear of God Effect) */}
+        {hasHoverImage && (
+          <img
+            src={product.hoverImage}
+            alt={`${product.name} Back/Styling Angle`}
+            className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-700 ease-out ${
+              showBackImage ? 'opacity-100 scale-100' : 'opacity-0 scale-105 pointer-events-none'
+            }`}
+            loading="lazy"
+          />
+        )}
+
+        {/* View Angle Indicator Pill (Front / Back) */}
+        {hasHoverImage && (
+          <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 bg-black/60 backdrop-blur-md text-white text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full transition-opacity duration-300">
+            <RefreshCw className={`w-2.5 h-2.5 transition-transform duration-500 ${showBackImage ? 'rotate-180 text-accent' : ''}`} />
+            <span>{showBackImage ? 'Back View' : 'Front View'}</span>
+          </div>
+        )}
 
         {/* Badges Overlay */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
@@ -45,10 +119,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Fabric GSM tag */}
         {product.fabricGSM && (
-          <div className="absolute bottom-2.5 right-2.5 z-10 bg-primary/80 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-0.5 rounded-sm">
+          <div className="absolute bottom-2.5 left-2.5 z-10 bg-primary/80 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-0.5 rounded-sm">
             {product.fabricGSM}
           </div>
         )}
+
+        {/* Quick Size Bar floating on Hover / Touch */}
+        <div className="absolute bottom-0 left-0 right-0 p-2.5 bg-gradient-to-t from-black/80 via-black/40 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex items-center justify-center gap-1.5 z-20">
+          <span className="text-[10px] uppercase font-bold text-white mr-1">Quick Add:</span>
+          {product.sizes.map((size) => (
+            <button
+              key={size}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onAddToCart) onAddToCart(product, size);
+              }}
+              className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-xs bg-white text-primary hover:bg-accent hover:text-white transition-colors"
+            >
+              {size}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Product Details */}
@@ -112,7 +203,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <Button
             variant="primary"
             size="sm"
-            onClick={() => onAddToCart && onAddToCart(product)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onAddToCart) onAddToCart(product, 'L');
+            }}
             leftIcon={<ShoppingBag className="w-3.5 h-3.5" />}
           >
             Add
@@ -122,4 +216,3 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     </div>
   );
 };
-
